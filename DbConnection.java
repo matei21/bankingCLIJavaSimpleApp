@@ -7,7 +7,7 @@ public class DbConnection {
     private static final String USER = "root";
     private static final String PASS = "root";
 
-    private static Connection connection;
+    static Connection connection;
 
     private DbConnection() {}
 

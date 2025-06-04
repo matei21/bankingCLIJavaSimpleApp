@@ -1,10 +1,21 @@
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.Scanner;
 
 public class Main {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws SQLException {
         MainService bank = new MainService();
         AuditService audit = AuditService.getInstance();
+
         Scanner scanner = new Scanner(System.in);
+        Connection db = DbConnection.getInstance();
+        BankAccountService bankAccountService = new BankAccountService();
+        ClientService clientService = new ClientService();
+        CardService cardService = new CardService();
+        clientService.createTable();
+        bankAccountService.createTable();
+        cardService.createTable();
+
 
         System.out.println("1. Defineste un client");
         System.out.println("2. Defineste un cont");
@@ -23,7 +34,8 @@ public class Main {
         while(optiune != 12) {
             System.out.print("Alege o optiune: ");
             optiune = scanner.nextInt();
-            scanner.nextLine(); // consume newline
+            scanner.nextLine();
+
             switch(optiune) {
                 case 1: // Add client
                     System.out.print("CNP: ");
@@ -33,6 +45,7 @@ public class Main {
                     Client client = new Client(cnp, name);
                     bank.addClient(client);
                     audit.logAction("add_client");
+                    clientService.insert(client);
                     System.out.println("Client added.");
                     break;
                 case 2: // Add account to client
@@ -47,6 +60,8 @@ public class Main {
                     double adminFee = scanner.nextDouble();
                     BankAccount acc = new SimpleAccount(iban, balance, bank.findClientByCNP(cnpAcc), adminFee);
                     bank.addAccountToClient(cnpAcc, acc);
+                    bankAccountService.createTable();
+                    bankAccountService.insert(acc);
                     audit.logAction("add_account_to_client");
                     System.out.println("Account added to client.");
                     break;
@@ -78,6 +93,7 @@ public class Main {
                     SavingsAccount savAcc = new SavingsAccount(ibanSav, balSav, bank.findClientByCNP(cnpSav), rate);
                     bank.addAccountToClient(cnpSav, savAcc);
                     audit.logAction("open_savings_account");
+                    bankAccountService.insert(savAcc);
                     System.out.println("Savings account opened.");
                     break;
                 case 5: // Deposit to current account
@@ -89,6 +105,7 @@ public class Main {
                     SimpleAccount currentAccount = (SimpleAccount) bank.findAccountByIBAN(ibanDep);
                     currentAccount.deposit(amtDep);
                     audit.logAction("deposit_current_account");
+                    bankAccountService.updateBalance(ibanDep, currentAccount.getBalance());
                     System.out.println("Deposit successful.");
                     break;
                 case 6: // Deposit to savings account
@@ -100,6 +117,7 @@ public class Main {
                     SavingsAccount savingsAccount = (SavingsAccount) bank.findAccountByIBAN(ibanDepSav);
                     savingsAccount.deposit(amtDepSav);
                     audit.logAction("deposit_savings_account");
+                    bankAccountService.updateBalance(ibanDepSav, savingsAccount.getBalance());
                     System.out.println("Deposit successful.");
                     break;
                 case 7: // Withdraw from current account
@@ -111,6 +129,7 @@ public class Main {
                     SimpleAccount simpleAccount = (SimpleAccount) bank.findAccountByIBAN(ibanW);
                     simpleAccount.deposit(amtW);
                     audit.logAction("withdraw_current_account");
+                    bankAccountService.updateBalance(ibanW, simpleAccount.getBalance());
                     System.out.println("Withdrawal successful.");
                     break;
                 case 8: // Withdraw from savings account
@@ -122,12 +141,14 @@ public class Main {
                     SavingsAccount account = (SavingsAccount) bank.findAccountByIBAN(ibanWS);
                     account.withdraw(amtWS);
                     audit.logAction("withdraw_savings_account");
+                    bankAccountService.updateBalance(ibanWS, account.getBalance());
                     System.out.println("Withdrawal successful.");
                     break;
                 case 9: // Show client and accounts
                     bank.showClients();
                     bank.showAccounts();
                     audit.logAction("show_clients_and_accounts");
+                    clientService.getAll().forEach(System.out::println);
                     break;
                 case 10: // Create debit card
                     System.out.print("Card number: ");
@@ -150,6 +171,7 @@ public class Main {
                     DebitCard debitCard = new DebitCard(cardNum, bank.findClientByCNP(cnpOwner), exp, cvv, balance2, pin, associatedAccount);
                     bank.addCard(debitCard);
                     audit.logAction("create_debit_card");
+                    cardService.insert(debitCard);
                     System.out.println("Debit card created.");
                     break;
                 case 11: // Create credit card
@@ -180,6 +202,7 @@ public class Main {
                     CreditCard creditCard = new CreditCard(cardNumC, bank.findClientByCNP(cnpOwnerC), expC, cvvC, balanceC, limit, minPayment, debt, interestRate);
                     bank.addCard(creditCard);
                     audit.logAction("create_credit_card");
+                    cardService.insert(creditCard);
                     System.out.println("Credit card created.");
                     break;
                 case 12:
